@@ -7,7 +7,7 @@ use std::fmt::Write;
 use std::fs;
 use std::{cmp::min, path::Path};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 struct Settings {
     url: String,
     path: String,
@@ -45,7 +45,10 @@ fn run(settings: Settings) -> Result<Repository, git2::Error> {
         true
     });
 
-    println!("git clone {} {}", settings.url, settings.path);
+    println!(
+        "Cloning repository from '{}' into directory '{}'. Please wait...",
+        settings.url, settings.path
+    );
 
     let mut fo = FetchOptions::new();
     fo.depth(1);
@@ -71,22 +74,32 @@ fn main() {
         panic!("url or path could not be empty");
     }
 
-    match run(settings) {
+    match run(settings.clone()) {
         Ok(repo) => {
             let mut remote = repo.find_remote("origin").unwrap();
 
-            remote.fetch(&["refs/heads/main"], None, None).unwrap();
+            remote
+                .fetch(&[format!("refs/head/{}", settings.branch)], None, None)
+                .unwrap();
 
-            let fetch_head = repo.find_reference("FETCH_HEAD").unwrap();
-            let fetch_commit = repo.reference_to_annotated_commit(&fetch_head).unwrap();
+            let origin_head = repo.find_reference("refs/remotes/origin/HEAD").unwrap();
+            let origin_commit = repo.reference_to_annotated_commit(&origin_head).unwrap();
 
-            let analysis = repo.merge_analysis(&[&fetch_commit]).unwrap();
+            // Find the local branch
+            let local_branch = repo
+                .find_branch(&settings.branch, git2::BranchType::Local)
+                .unwrap();
+            let local_oid = local_branch.get().target().unwrap();
 
-            let commit = repo.find_commit(fetch_commit.id()).unwrap();
-            if analysis.0.is_up_to_date() {
+            // Get the commit for 'origin/HEAD'
+            let origin_oid = origin_commit.id();
+            let origin_commit = repo.find_commit(origin_oid).unwrap();
+
+            let commit = repo.find_commit(origin_commit.id()).unwrap();
+            if local_oid == origin_oid {
                 println!("Already up to date");
             } else {
-                println!("git reset --hard HEAD");
+                println!("Resetting local '{}' to 'origin/HEAD'...", settings.branch);
 
                 let pb = spawn_progress_bar();
 
@@ -101,9 +114,12 @@ fn main() {
                     .unwrap();
 
                 pb.finish();
+
+                println!("Local branch reset to 'origin/HEAD'");
             }
             println!(
-                "# HEAD {}",
+                "Current HEAD at commit {}: {}",
+                commit.id(),
                 commit.message().unwrap_or("No commit message").trim()
             );
         }
