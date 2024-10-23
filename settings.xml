@@ -3,4 +3,5 @@
 <settings>
   <url>https://github.com/momozahara/dotfile</url>
   <path>dotfile</path>
+  <branch>main</branch>
 </settings>

@@ -11,6 +11,7 @@ use std::{cmp::min, path::Path};
 struct Settings {
     url: String,
     path: String,
+    branch: String,
 }
 
 fn spawn_progress_bar() -> ProgressBar {
