@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="settings.xsd"?>
+<settings>
+  <url>https://github.com/momozahara/dotfile</url>
+  <path>dotfile</path>
+</settings>
