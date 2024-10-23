@@ -1,5 +1,5 @@
 use git2::build::{CheckoutBuilder, RepoBuilder};
-use git2::{FetchOptions, RemoteCallbacks, Repository};
+use git2::{ErrorCode, FetchOptions, RemoteCallbacks, Repository};
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use quick_xml::de;
 use serde::Deserialize;
@@ -53,12 +53,20 @@ fn run(settings: Settings) -> Result<Repository, git2::Error> {
     let mut fo = FetchOptions::new();
     fo.depth(1);
     fo.remote_callbacks(cb);
-    repo = Some(
-        RepoBuilder::new()
-            .fetch_options(fo)
-            .clone(&settings.url, Path::new(&settings.path))
-            .unwrap(),
-    );
+    repo = match RepoBuilder::new()
+        .branch(&settings.branch)
+        .fetch_options(fo)
+        .clone(&settings.url, Path::new(&settings.path))
+    {
+        Ok(repo) => Some(repo),
+        Err(ref e) if e.code() == ErrorCode::NotFound => {
+            panic!(
+                "Could not clone repository from '{}' branch '{}' does not existed.",
+                settings.url, settings.branch
+            )
+        }
+        Err(e) => return Err(e),
+    };
 
     pb.finish();
 
