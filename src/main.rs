@@ -95,7 +95,6 @@ fn main() {
             let origin_oid = origin_commit.id();
             let origin_commit = repo.find_commit(origin_oid).unwrap();
 
-            let commit = repo.find_commit(origin_commit.id()).unwrap();
             if local_oid == origin_oid {
                 println!("Already up to date");
             } else {
@@ -110,8 +109,12 @@ fn main() {
                     pb.set_position(position as u64);
                 });
 
-                repo.reset(commit.as_object(), git2::ResetType::Hard, Some(&mut cb))
-                    .unwrap();
+                repo.reset(
+                    origin_commit.as_object(),
+                    git2::ResetType::Hard,
+                    Some(&mut cb),
+                )
+                .unwrap();
 
                 pb.finish();
 
@@ -119,8 +122,11 @@ fn main() {
             }
             println!(
                 "Current HEAD at commit {}: {}",
-                commit.id(),
-                commit.message().unwrap_or("No commit message").trim()
+                origin_commit.id(),
+                origin_commit
+                    .message()
+                    .unwrap_or("No commit message")
+                    .trim()
             );
         }
         Err(e) => println!("error: {}", e),
